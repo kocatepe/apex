@@ -67,7 +67,7 @@ public with sharing class AfterEventEmailControllerTest {
             event.AfterEventEmailSchedule__c = System.now().addDays(i);
             event.conference360__Status__c = 'Active';
             event.conference360__Event_Start_Date__c = System.today();
-            event.conference360__Event_Start_Time__c = System.now().time().addHours(1);
+            event.conference360__Event_Start_Time__c = Time.newInstance(13, 30, 0, 0);
             event.conference360__Event_End_Date__c = event.conference360__Event_Start_Date__c;
             event.conference360__Event_End_Time__c = event.conference360__Event_Start_Time__c.addHours(1);
             event.conference360__Attendee_Limit__c = 100;
