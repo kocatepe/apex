@@ -1,4 +1,5 @@
 public with sharing class ContactTriggerHandler {
+    static Map<Id, Integer> accCount = new Map<Id, Integer>();
     static Map<Id, Account> accMap = new Map<Id, Account>();
 
     public static void handleSamplers(List<Contact> trgNew, List<Contact> trgOld, Map<Id,Contact> trgNewMap, Map<Id,Contact> trgOldMap){
@@ -86,10 +87,14 @@ public with sharing class ContactTriggerHandler {
 
     static Boolean validateSampler(Contact con){
         Boolean error = false;
-        switch on accMap.get(con.AccountId).Size__c {
-            when 'Small' {if(accMap.get(con.AccountId).Assigned_Samplers_Count__c >= 1) error=true;}
-            when 'Medium' {if(accMap.get(con.AccountId).Assigned_Samplers_Count__c >= 3) error=true;}
-            when 'Large' {if(accMap.get(con.AccountId).Assigned_Samplers_Count__c >= 5) error=true;}
+        Integer countNow = accCount.get(con.AccountId);
+        if((accMap.get(con.AccountId).Size__c == 'Small' && countNow >= 1)
+            || (accMap.get(con.AccountId).Size__c == 'Medium' && countNow >= 3)
+            || (accMap.get(con.AccountId).Size__c == 'Large' && countNow >= 5)){
+            error=true;
+        } else {
+            countNow++;
+            accCount.put(con.AccountId, countNow);
         }
         return error;
     }
