@@ -22,6 +22,22 @@ public with sharing class ContactTriggerHandler {
             //Set<Id> accIds = new Set<Id>();
             List<Contact> consToValidate = new List<Contact>();
             for (Contact con : trgNew) {
+                /*
+                if(con.Sampler__c && trgOldMap.get(con.Id).Sampler__c){
+                    //If there's reparenting of a sampler:
+                    if(con.accountId != trgOldMap.get(con.Id).AccountId){
+                        if(trgOldMap.get(con.Id).AccountId != null){
+                            //Decrement sampler count of the old parent:
+                            accSamplerCountMap.put(trgOldMap.get(con.Id).AccountId, accSamplerCountMap.get(trgOldMap.get(con.Id).AccountId)-1);
+                        }
+                        if(con.accountId != null){
+                            validateSampler(con);
+                        }
+                    }
+                }
+                else if(Change on Sampler__c and new = true && old = false)
+                else if(Change on Sampler__c and new = false && old = true)
+                */
                 //Always re-calculate when the checkbox is updated
                 if(con.Sampler__c != trgOldMap.get(con.Id).Sampler__c){
                     //accIds.add(con.AccountId);
@@ -32,15 +48,6 @@ public with sharing class ContactTriggerHandler {
                             //Decrement sampler count of the old parent:
                             accSamplerCountMap.put(trgOldMap.get(con.Id).AccountId, accSamplerCountMap.get(trgOldMap.get(con.Id).AccountId)-1);
                         }
-                    }
-                //Reparenting of a sampler:
-                } else if(con.Sampler__c && con.accountId != trgOldMap.get(con.Id).AccountId){
-                    //Decrement sampler count of the old parent:
-                    accSamplerCountMap.put(trgOldMap.get(con.Id).AccountId, accSamplerCountMap.get(trgOldMap.get(con.Id).AccountId)-1);
-                    if(con.accountId != null){
-                        //Validate and re-calculate the new parent
-                        consToValidate.add(con);
-                        accIds.add(con.AccountId);
                     }
                 }
             }
