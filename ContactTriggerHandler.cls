@@ -1,6 +1,5 @@
 public with sharing class ContactTriggerHandler {
     static Map<Id, Integer> accSamplerCountMap = new Map<Id, Integer>();
-    //static Map<Id, Account> accMap = new Map<Id, Account>();
 
     public static void handleSamplers(List<Contact> trgNew, List<Contact> trgOld, Map<Id,Contact> trgNewMap, Map<Id,Contact> trgOldMap){
         //Initialize accSamplerCountMap:
@@ -10,7 +9,6 @@ public with sharing class ContactTriggerHandler {
         }
 
         if(Trigger.isInsert || Trigger.isUndelete){
-            List<Contact> consToValidate = new List<Contact>();
             for(Contact con : trgNew){
                 if(con.Sampler__c && con.AccountId != null){
                     validateSampler(con);
@@ -18,10 +16,25 @@ public with sharing class ContactTriggerHandler {
             }
         }
 
-                //If there's reparenting of a sampler:
+                
         if (Trigger.isUpdate) {
-            //Set<Id> accIds = new Set<Id>();
-            List<Contact> consToValidate = new List<Contact>();
+/*
+1. if(con.Sampler__c && trgOldMap.get(con.Id).Sampler__c && (con.accountId != trgOldMap.get(con.Id).AccountId))
+    //If there's reparenting of a sampler:
+    1.1. if(trgOldMap.get(con.Id).AccountId != null)
+        //Decrement sampler count of the old parent:
+        accSamplerCountMap.put(trgOldMap.get(con.Id).AccountId, accSamplerCountMap.get(trgOldMap.get(con.Id).AccountId)-1);
+    1.2. if(con.accountId != null)
+        validateSampler(con);
+2. else if(con.Sampler__c && !trgOldMap.get(con.Id).Sampler__c)
+    validateSampler(con);
+3. else if(!con.Sampler__c && trgOldMap.get(con.Id).Sampler__c)
+    //Reparented and de-checked:
+    3.1. if(con.accountId != trgOldMap.get(con.Id).AccountId)
+        accSamplerCountMap.put(trgOldMap.get(con.Id).AccountId, accSamplerCountMap.get(trgOldMap.get(con.Id).AccountId)-1);
+    3.2. else //Same parent, de-checked:
+        accSamplerCountMap.put(con.AccountId, accSamplerCountMap.get(con.AccountId)-1);
+*/
             for (Contact con : trgNew) {
                 //Reparenting:
                 if(con.accountId != trgOldMap.get(con.Id).AccountId){
@@ -94,10 +107,7 @@ public with sharing class ContactTriggerHandler {
 
     static Boolean validateSampler(Contact con){
         Boolean ok = true;
-        Integer countNow = accSamplerCountMap.get(con.AccountId);
-        if(countNow == null){
-            countNow = 0;
-        }
+        Integer countNow = accSamplerCountMap.get(con.AccountId) ?? 0;
         if((accMap.get(con.AccountId).Size__c == 'Small' && countNow >= 1)
             || (accMap.get(con.AccountId).Size__c == 'Medium' && countNow >= 3)
             || (accMap.get(con.AccountId).Size__c == 'Large' && countNow >= 5)){
@@ -109,21 +119,4 @@ public with sharing class ContactTriggerHandler {
         }
         return ok;
     }
-
-    /*static Boolean validateSampler(Contact con){
-        Boolean error = false;
-        Integer countNow = accSamplerCountMap.get(con.AccountId);
-        if(countNow == null){
-            countNow = 0;
-        }
-        if((accMap.get(con.AccountId).Size__c == 'Small' && countNow >= 1)
-            || (accMap.get(con.AccountId).Size__c == 'Medium' && countNow >= 3)
-            || (accMap.get(con.AccountId).Size__c == 'Large' && countNow >= 5)){
-            error=true;
-        } else {
-            countNow++;
-            accSamplerCountMap.put(con.AccountId, countNow);
-        }
-        return error;
-    }*/
 }
