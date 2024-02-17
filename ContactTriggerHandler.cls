@@ -1,8 +1,13 @@
 public with sharing class ContactTriggerHandler {
-    static Map<Id, Integer> accCount = new Map<Id, Integer>();
+    static Map<Id, Integer> accSamplerCountMap = new Map<Id, Integer>();
     static Map<Id, Account> accMap = new Map<Id, Account>();
 
     public static void handleSamplers(List<Contact> trgNew, List<Contact> trgOld, Map<Id,Contact> trgNewMap, Map<Id,Contact> trgOldMap){
+        //Initialize accSamplerCountMap:
+        List<Account> allAccsWithSamplers = [SELECT Id, Assigned_Samplers_Count__c FROM Account WHERE Id IN (SELECT AccountId FROM Contact WHERE Sampler__c = true)];
+        for(Account acc : allAccsWithSamplers){
+            accSamplerCountMap.put(acc.Id, acc.Assigned_Samplers_Count__c);
+        }
 
         if(Trigger.isInsert || Trigger.isUndelete){
             Set<Id> accIds = new Set<Id>();
@@ -15,6 +20,9 @@ public with sharing class ContactTriggerHandler {
             }
 
             accMap.putAll(new Map<Id, Account>([SELECT Id, Size__c, Assigned_Samplers_Count__c FROM Account WHERE Id IN :accIds]));
+            for(Account acc : accMap.values()){
+                accSamplerCountMap.put(acc.Id, acc.Assigned_Samplers_Count__c);
+            }
 
             if(!consToValidate.isEmpty()){
                 for(Contact con : consToValidate){
@@ -51,6 +59,9 @@ public with sharing class ContactTriggerHandler {
             }
 
             accMap.putAll(new Map<Id, Account>([SELECT Id, Size__c, Assigned_Samplers_Count__c FROM Account WHERE Id IN :accIds]));
+            for(Account acc : accMap.values()){
+                accSamplerCountMap.put(acc.Id, acc.Assigned_Samplers_Count__c);
+            }
 
             if(!consToValidate.isEmpty()){
                 for(Contact con : consToValidate){
@@ -69,17 +80,19 @@ public with sharing class ContactTriggerHandler {
             for(Contact con : trgOld){
                 if(con.Sampler__c && con.AccountId != null){
                     accIds.add(con.AccountId);
+                    accSamplerCountMap.put(con.AccountId, accSamplerCountMap.get(con.AccountId)-1);
                 }
             }
             accMap.putAll(new Map<Id, Account>([SELECT Id, Size__c, Assigned_Samplers_Count__c FROM Account WHERE Id IN :accIds]));
+            for(Account acc : accMap.values()){
+                accSamplerCountMap.put(acc.Id, acc.Assigned_Samplers_Count__c);
+            }
         }
 
-        if(!accMap.isEmpty()){
-            List<Account> updAccs = [SELECT Id, Assigned_Samplers_Count__c,
-                                    (SELECT Id FROM Contacts WHERE Sampler__c = TRUE)
-                                    FROM Account WHERE Id IN :accMap.keySet()];
+        if(!accSamplerCountMap.isEmpty()){
+            List<Account> updAccs = [SELECT Id, Assigned_Samplers_Count__c, FROM Account WHERE Id IN :accSamplerCountMap.keySet()];
             for(Account acc : updAccs){
-                acc.Assigned_Samplers_Count__c = acc.Contacts.size();
+                acc.Assigned_Samplers_Count__c = accSamplerCountMap.get(acc.Id);
             }
             update updAccs;
         }
@@ -87,14 +100,17 @@ public with sharing class ContactTriggerHandler {
 
     static Boolean validateSampler(Contact con){
         Boolean error = false;
-        Integer countNow = accCount.get(con.AccountId);
+        Integer countNow = accSamplerCountMap.get(con.AccountId);
+        if(countNow == null){
+            countNow = 0;
+        }
         if((accMap.get(con.AccountId).Size__c == 'Small' && countNow >= 1)
             || (accMap.get(con.AccountId).Size__c == 'Medium' && countNow >= 3)
             || (accMap.get(con.AccountId).Size__c == 'Large' && countNow >= 5)){
             error=true;
         } else {
             countNow++;
-            accCount.put(con.AccountId, countNow);
+            accSamplerCountMap.put(con.AccountId, countNow);
         }
         return error;
     }
