@@ -18,14 +18,14 @@ public with sharing class ContactTriggerHandler {
             }
         }
 
+                //If there's reparenting of a sampler:
         if (Trigger.isUpdate) {
             //Set<Id> accIds = new Set<Id>();
             List<Contact> consToValidate = new List<Contact>();
             for (Contact con : trgNew) {
-                /*
-                if(con.Sampler__c && trgOldMap.get(con.Id).Sampler__c){
-                    //If there's reparenting of a sampler:
-                    if(con.accountId != trgOldMap.get(con.Id).AccountId){
+                //Reparenting:
+                if(con.accountId != trgOldMap.get(con.Id).AccountId){
+                    if(con.Sampler__c && trgOldMap.get(con.Id).Sampler__c){
                         if(trgOldMap.get(con.Id).AccountId != null){
                             //Decrement sampler count of the old parent:
                             accSamplerCountMap.put(trgOldMap.get(con.Id).AccountId, accSamplerCountMap.get(trgOldMap.get(con.Id).AccountId)-1);
@@ -34,10 +34,17 @@ public with sharing class ContactTriggerHandler {
                             validateSampler(con);
                         }
                     }
+                } else { //No reparenting:
+
                 }
-                else if(Change on Sampler__c and new = true && old = false)
-                else if(Change on Sampler__c and new = false && old = true)
-                */
+ /*else if(con.Sampler__c && !trgOldMap.get(con.Id).Sampler__c) {
+                    if(con.accountId != null){
+                        validateSampler(con);
+                    }
+                } else if(!con.Sampler__c && trgOldMap.get(con.Id).Sampler__c) {
+
+                }*/
+
                 //Always re-calculate when the checkbox is updated
                 if(con.Sampler__c != trgOldMap.get(con.Id).Sampler__c){
                     //accIds.add(con.AccountId);
