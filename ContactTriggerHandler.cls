@@ -1,16 +1,28 @@
 public with sharing class ContactTriggerHandler {
     static Map<Id, String> accSizeSamplerCountMap = new Map<Id, String>();
-
-    public static void handleSamplers(List<Contact> trgNew, List<Contact> trgOld, Map<Id,Contact> trgNewMap, Map<Id,Contact> trgOldMap){
-        //Initialize accSizeSamplerCountMap:
+    static {
+        //Populate accSizeSamplerCountMap:
         List<Account> allAccsWithSamplers = [SELECT Id, Size__c, Assigned_Samplers_Count__c FROM Account WHERE Id IN (SELECT AccountId FROM Contact WHERE Sampler__c = true)];
         for(Account acc : allAccsWithSamplers){
-            String sizeAndCount = acc.Size__c + '-' + acc.Assigned_Samplers_Count__c;
-            //Example sizeAndCount: 'Medium-2'
+            String size = acc.Size__c ?? 'NOSIZE';
+            Integer count = Integer.valueOf(acc.Assigned_Samplers_Count__c) ?? 0;
+            String sizeAndCount = size + '-' + count;
+            //sizeAndCount examples: 'Medium-2', 'NOSIZE-7', 'Large-0'
             accSizeSamplerCountMap.put(acc.Id, sizeAndCount);
         }
+    }
 
-        if(Trigger.isInsert || Trigger.isUndelete){
+    public static void handleSamplers(List<Contact> trgNew, List<Contact> trgOld, Map<Id,Contact> trgNewMap, Map<Id,Contact> trgOldMap){
+        if(Trigger.isBefore && Trigger.isDelete){
+            //No need for validation when deleting a Contact
+            for(Contact con : trgOld){
+                if(con.Sampler__c && con.AccountId != null){
+                    decrementCount(con.AccountId);
+                }
+            }
+        }
+
+        if(Trigger.isAfter && (Trigger.isInsert || Trigger.isUndelete)){
             for(Contact con : trgNew){
                 if(con.Sampler__c && con.AccountId != null && validateSampler(con)){
                     incrementCount(con.accountId);
@@ -18,6 +30,7 @@ public with sharing class ContactTriggerHandler {
             }
         }
 
+/*
         if (Trigger.isUpdate) {
             for (Contact con : trgNew) {
 
@@ -62,13 +75,13 @@ old-1.2. if(con.accountId != null)
                 } else { //No reparenting:
 
                 }
- /*else if(con.Sampler__c && !trgOldMap.get(con.Id).Sampler__c) {
+ else if(con.Sampler__c && !trgOldMap.get(con.Id).Sampler__c) {
                     if(con.accountId != null){
                         validateSampler(con);
                     }
                 } else if(!con.Sampler__c && trgOldMap.get(con.Id).Sampler__c) {
 
-                }*/
+                }
 
                 //Always re-calculate when the checkbox is updated
                 if(con.Sampler__c != trgOldMap.get(con.Id).Sampler__c){
@@ -82,17 +95,8 @@ old-1.2. if(con.accountId != null)
                         }
                     }
                 }
-            }*/
-        }
-
-        if(Trigger.isDelete){
-            //No need for validation when deleting a Contact
-            for(Contact con : trgOld){
-                if(con.Sampler__c && con.AccountId != null){
-                    decrementCount(con.AccountId);
-                }
             }
-        }
+        }*/
 
         if(!accSizeSamplerCountMap.isEmpty()){
             List<Account> updAccs = [SELECT Id, Size__c, Assigned_Samplers_Count__c FROM Account WHERE Id IN :accSizeSamplerCountMap.keySet()];
@@ -115,8 +119,13 @@ old-1.2. if(con.accountId != null)
 
     static Boolean validateSampler(Contact con){
         Boolean ok = true;
-        String accSize = accSizeSamplerCountMap.get(con.AccountId)?.substringBefore('-');
-        Integer recentCount = Integer.valueOf(accSizeSamplerCountMap.get(con.AccountId)?.substringAfter('-') ?? '0');
+        String accSize;
+        Integer recentCount;
+        String sizeAndCount = accSizeSamplerCountMap.get(con.AccountId);
+        if(sizeAndCount != null){
+            accSize = sizeAndCount.substringBefore('-');
+            recentCount = Integer.valueOf(sizeAndCount.substringAfter('-'));
+        }
         if((accSize == 'Small' && recentCount >= 1) || (accSize == 'Medium' && recentCount >= 3) || (accSize == 'Large' && recentCount >= 5)){
             ok = false;
             con.Sampler__c.addError('The parent account has reached its max number of samplers.');
