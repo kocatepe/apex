@@ -1,5 +1,3 @@
 trigger ContactTrigger on Contact (before insert, before update, before delete, after insert, after update, after delete, after undelete) {
-    if(Trigger.isAfter){
-        ContactTriggerHandler.handleSamplers(trigger.new, trigger.old, trigger.newMap, trigger.oldMap);
-    }
+    ContactTriggerHandler.handleSamplers(trigger.new, trigger.old, trigger.newMap, trigger.oldMap);
 }
