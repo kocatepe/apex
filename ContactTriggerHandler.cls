@@ -1,11 +1,13 @@
 public with sharing class ContactTriggerHandler {
-    static Map<Id, Integer> accSamplerCountMap = new Map<Id, Integer>();
+    static Map<Id, String> accSizeSamplerCountMap = new Map<Id, String>();
 
     public static void handleSamplers(List<Contact> trgNew, List<Contact> trgOld, Map<Id,Contact> trgNewMap, Map<Id,Contact> trgOldMap){
-        //Initialize accSamplerCountMap:
-        List<Account> allAccsWithSamplers = [SELECT Id, Assigned_Samplers_Count__c FROM Account WHERE Id IN (SELECT AccountId FROM Contact WHERE Sampler__c = true)];
+        //Initialize accSizeSamplerCountMap:
+        List<Account> allAccsWithSamplers = [SELECT Id, Size__c, Assigned_Samplers_Count__c FROM Account WHERE Id IN (SELECT AccountId FROM Contact WHERE Sampler__c = true)];
         for(Account acc : allAccsWithSamplers){
-            accSamplerCountMap.put(acc.Id, acc.Assigned_Samplers_Count__c);
+            String sizeAndCount = acc.Size__c + '-' + acc.Assigned_Samplers_Count__c;
+            //Example sizeAndCount: 'Medium-2'
+            accSizeSamplerCountMap.put(acc.Id, sizeAndCount);
         }
 
         if(Trigger.isInsert || Trigger.isUndelete){
@@ -16,14 +18,13 @@ public with sharing class ContactTriggerHandler {
             }
         }
 
-                
         if (Trigger.isUpdate) {
 /*
 1. if(con.Sampler__c && trgOldMap.get(con.Id).Sampler__c && (con.accountId != trgOldMap.get(con.Id).AccountId))
     //If there's reparenting of a sampler:
     1.1. if(trgOldMap.get(con.Id).AccountId != null)
         //Decrement sampler count of the old parent:
-        accSamplerCountMap.put(trgOldMap.get(con.Id).AccountId, accSamplerCountMap.get(trgOldMap.get(con.Id).AccountId)-1);
+        decrementCount(trgOldMap.get(con.Id).AccountId);
     1.2. if(con.accountId != null)
         validateSampler(con);
 2. else if(con.Sampler__c && !trgOldMap.get(con.Id).Sampler__c)
@@ -31,9 +32,9 @@ public with sharing class ContactTriggerHandler {
 3. else if(!con.Sampler__c && trgOldMap.get(con.Id).Sampler__c)
     //Reparented and de-checked:
     3.1. if(con.accountId != trgOldMap.get(con.Id).AccountId)
-        accSamplerCountMap.put(trgOldMap.get(con.Id).AccountId, accSamplerCountMap.get(trgOldMap.get(con.Id).AccountId)-1);
+        decrementCount(trgOldMap.get(con.Id).AccountId);
     3.2. else //Same parent, de-checked:
-        accSamplerCountMap.put(con.AccountId, accSamplerCountMap.get(con.AccountId)-1);
+        decrementCount(con.AccountId);
 */
             for (Contact con : trgNew) {
                 //Reparenting:
@@ -41,7 +42,7 @@ public with sharing class ContactTriggerHandler {
                     if(con.Sampler__c && trgOldMap.get(con.Id).Sampler__c){
                         if(trgOldMap.get(con.Id).AccountId != null){
                             //Decrement sampler count of the old parent:
-                            accSamplerCountMap.put(trgOldMap.get(con.Id).AccountId, accSamplerCountMap.get(trgOldMap.get(con.Id).AccountId)-1);
+                            decrementCount(trgOldMap.get(con.Id).AccountId);
                         }
                         if(con.accountId != null){
                             validateSampler(con);
@@ -66,40 +67,36 @@ public with sharing class ContactTriggerHandler {
                     if(con.Sampler__c){
                         if(validateSampler(con)){
                             //Decrement sampler count of the old parent:
-                            accSamplerCountMap.put(trgOldMap.get(con.Id).AccountId, accSamplerCountMap.get(trgOldMap.get(con.Id).AccountId)-1);
+                            decrementCount(trgOldMap.get(con.Id).AccountId);
                         }
                     }
                 }
             }
-
-            /*accMap.putAll(new Map<Id, Account>([SELECT Id, Size__c, Assigned_Samplers_Count__c FROM Account WHERE Id IN :accIds]));
-            for(Account acc : accMap.values()){
-                accSamplerCountMap.put(acc.Id, acc.Assigned_Samplers_Count__c);
-            }
-            if(!consToValidate.isEmpty()){
-                for(Contact con : consToValidate){
-                    if(validateSampler(con)){
-                        accMap.remove(con.AccountId);
-                        accMap.remove(trgOldMap.get(con.Id).AccountId);
-                        con.Sampler__c.addError('The parent account has reached its max number of samplers.');
-                    }
-                }
-            }*/
         }
 
         if(Trigger.isDelete){
             //No need for validation when deleting a Contact
             for(Contact con : trgOld){
                 if(con.Sampler__c && con.AccountId != null){
-                    accSamplerCountMap.put(con.AccountId, accSamplerCountMap.get(con.AccountId)-1);
+                    decrementCount(con.AccountId);
                 }
             }
         }
 
-        if(!accSamplerCountMap.isEmpty()){
-            List<Account> updAccs = [SELECT Id, Assigned_Samplers_Count__c, FROM Account WHERE Id IN :accSamplerCountMap.keySet()];
+        if(!accSizeSamplerCountMap.isEmpty()){
+            List<Account> updAccs = [SELECT Id, Size__c, Assigned_Samplers_Count__c, FROM Account WHERE Id IN :accSizeSamplerCountMap.keySet()];
             for(Account acc : updAccs){
-                acc.Assigned_Samplers_Count__c = accSamplerCountMap.get(acc.Id);
+                acc.Assigned_Samplers_Count__c = accSizeSamplerCountMap.get(acc.Id).substringAfter('-');
+                if(acc.Size__c == null){
+                    //Update the size of Account according to current sampler count:
+                    if(acc.Assigned_Samplers_Count__c <= 1){
+                        acc.Size__c = 'Small';
+                    } else if(acc.Assigned_Samplers_Count__c <= 3){
+                        acc.Size__c = 'Medium';
+                    } else {
+                        acc.Size__c = 'Large';
+                    }
+                }
             }
             update updAccs;
         }
@@ -107,16 +104,26 @@ public with sharing class ContactTriggerHandler {
 
     static Boolean validateSampler(Contact con){
         Boolean ok = true;
-        Integer countNow = accSamplerCountMap.get(con.AccountId) ?? 0;
-        if((accMap.get(con.AccountId).Size__c == 'Small' && countNow >= 1)
-            || (accMap.get(con.AccountId).Size__c == 'Medium' && countNow >= 3)
-            || (accMap.get(con.AccountId).Size__c == 'Large' && countNow >= 5)){
+        String accSize = accSizeSamplerCountMap.get(con.AccountId).substringBefore('-');
+        Integer recentCount = Integer.valueOf(accSizeSamplerCountMap.get(con.AccountId).substringAfter('-')) ?? 0;
+        if((accSize == 'Small' && recentCount >= 1)
+            || (accSize == 'Medium' && recentCount >= 3)
+            || (accSize == 'Large' && recentCount >= 5)){
             ok = false;
             con.Sampler__c.addError('The parent account has reached its max number of samplers.');
         } else {
-            countNow++;
-            accSamplerCountMap.put(con.AccountId, countNow);
+            recentCount++;
+            String sizeAndCount = accSize + '-' + recentCount;
+            accSizeSamplerCountMap.put(con.AccountId, sizeAndCount);
         }
         return ok;
+    }
+
+    static void decrementCount(Id accId){
+        String sizeAndCount = accSizeSamplerCountMap.get(accId);
+        Integer currentCount = Integer.valueOf(sizeAndCount.substringAfter('-'));
+        currentCount--;
+        sizeAndCount = sizeAndCount.substringBefore('-') + '-' + currentCount;
+        accSizeSamplerCountMap.put(accId, sizeAndCount);
     }
 }
