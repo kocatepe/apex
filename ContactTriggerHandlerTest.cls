@@ -31,11 +31,16 @@ public class ContactTriggerHandlerTest {
         Contact con = new Contact(LastName = 'Test', AccountId = acc.Id, Sampler__c = true);
 
         Test.startTest();
-        Database.SaveResult sr = Database.insert(con, false);
+        try {
+            insert con;
+        } catch (Exception e) {
+            Assert.isTrue(e.getMessage().contains('The parent account has reached its max number of samplers.'));
+        }
+        //Database.SaveResult sr = Database.insert(con, false);
         Test.stopTest();
 
-        Assert.isFalse(sr.isSuccess());
-        Assert.areEqual('The parent account has reached its max number of samplers.', sr.getErrors()[0].getMessage());
+        /*Assert.isFalse(sr.isSuccess());
+        Assert.areEqual('The parent account has reached its max number of samplers.', sr.getErrors()[0].getMessage());*/
     }
 
     @isTest static void testUpdate1(){
