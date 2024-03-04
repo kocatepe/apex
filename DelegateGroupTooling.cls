@@ -1,11 +1,11 @@
 public with sharing class DelegateGroupTooling {
-    @InvocableMethod(label='Get Delegated Group Member User Ids' description='Returns the list of member user ids for a given Delegated Group Developer Name')
+    @InvocableMethod(label='Get Delegated Group Member User Ids' description='Returns the list of member user ids for a given list of string which contains Delegated Group Developer Name')
     public static List<Id> getMemberUserIds(List<String> delegateGroupName){
         //1. Use delegateGroupName in a Tooling API query to retrieve DelegateGroupId
         String queryDelegateGroup = 'SELECT Id, DeveloperName FROM DelegateGroup WHERE DeveloperName = \'' + delegateGroupName[0] + '\' LIMIT 1';
         List<Object> groupRecords = toolingQuery(queryDelegateGroup);
         Map<String, Object> groupData = (Map<String, Object>) groupRecords[0];
-        Id delegateGroupId = (Id)groupData.get('Id');
+        Id delegateGroupId = (Id) groupData.get('Id');
 
         //2. Use delegateGroupId in a Tooling API query to retrieve userIds
         String queryDelegateGroupMember = 'SELECT DelegateGroupId, UserOrGroupId FROM DelegateGroupMember WHERE DelegateGroupId = \'' + delegateGroupId + '\'';
