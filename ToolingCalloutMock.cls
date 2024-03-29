@@ -1,6 +1,6 @@
 @isTest
 global class ToolingCalloutMock implements HttpCalloutMock {
-    global HttpResponse respond(HTTPRequest request){
+    global HttpResponse respond(HttpRequest request){
         HttpResponse response = new HttpResponse();
         response.setHeader('Content-Type', 'application/json');
         response.setStatusCode(200);
