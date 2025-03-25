@@ -1,0 +1,49 @@
+// Creating an Event Channel:
+String uriString = '/services/data/v63.0/tooling/sobjects/PlatformEventChannel';
+String endpoint = URL.getOrgDomainURL().toExternalForm() + uriString;
+string userSessionId = UserInfo.getOrganizationId() + '' + UserInfo.getSessionId().substring(15);
+
+HTTP http = new HTTP();
+HTTPRequest req = new HTTPRequest();
+req.setEndpoint(endpoint);
+req.setMethod('POST');
+req.setHeader('Authorization', 'Bearer ' + userSessionId);
+req.setHeader('Content-Type', 'application/json');
+String jsonBody = '{ "FullName": "InventoryAPI_AWS_Event_Channel__chn", "Metadata": { "channelType": "event", "label": "InventoryAPI AWS Event Channel" } }';
+req.setBody(jsonBody);
+HTTPResponse res = http.send(req);
+System.debug(res);
+
+/*
+SELECT Id, MasterLabel, FullName, ChannelType, EventType FROM PlatformEventChannel
+0YLcT00000004zhWAA
+InventoryAPI AWS Event Channel
+InventoryAPI_AWS_Event_Channel__chn
+event
+custom
+*/
+
+// Adding a Member to the Event Channel:
+String uriString = '/services/data/v63.0/tooling/sobjects/PlatformEventChannelMember';
+String endpoint = URL.getOrgDomainURL().toExternalForm() + uriString;
+string userSessionId = UserInfo.getOrganizationId() + '' + UserInfo.getSessionId().substring(15);
+
+HTTP http = new HTTP();
+HTTPRequest req = new HTTPRequest();
+req.setEndpoint(endpoint);
+req.setMethod('POST');
+req.setHeader('Authorization', 'Bearer ' + userSessionId);
+req.setHeader('Content-Type', 'application/json');
+String jsonBody = '{ "FullName": "InventoryAPI_AWS_Event_Channel_chn_Create_Meal_Record_e", "Metadata": { "eventChannel": "InventoryAPI_AWS_Event_Channel__chn", "selectedEntity": "Create_Meal_Record__e" } }';
+req.setBody(jsonBody);
+HTTPResponse res = http.send(req);
+System.debug(res);
+
+/*
+SELECT Id, FullName, EventChannel, SelectedEntity, FilterExpression FROM PlatformEventChannelMember
+0v8cT00000008SDQAY
+InventoryAPI_AWS_Event_Channel_chn_Create_Meal_Record_e
+0YLcT00000004zhWAA
+01IcT000000ACzBUAW
+''
+*/
