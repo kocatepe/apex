@@ -36,22 +36,23 @@ public class DelegateGroupTooling {
     }
     
     private static List<Object> toolingQuery(String query){
-        String endpoint = '/services/data/v58.0/tooling/query/?q=';
-        String urlString = URL.getOrgDomainURL().toExternalForm() + endpoint + EncodingUtil.urlEncode(query, 'UTF-8');
+        String urlMidString = '/services/data/v63.0/tooling/query/?q=';
+        String endpoint = URL.getOrgDomainURL().toExternalForm() + urlMidString + EncodingUtil.urlEncode(query, 'UTF-8');
+        string userSessionId = UserInfo.getOrganizationId() + '' + UserInfo.getSessionId().substring(15);
+        
+        HTTP http = new HTTP();
+        HTTPRequest req = new HTTPRequest();
+        req.setEndpoint(endpoint);
+        req.setMethod('GET');
+        req.setHeader('Authorization', 'Bearer ' + userSessionId);
+        HTTPResponse res = http.send(req);
 
-        HttpRequest request = new HttpRequest();
-        request.setEndpoint(urlString);
-        request.setMethod('GET');
-        request.setHeader('Authorization', 'Bearer ' + UserInfo.getSessionId());
-        Http http = new Http();
-        HttpResponse response = http.send(request);
-
-        if(response.getStatusCode() == 200){
-            Map<String, Object> jsonResponse = (Map<String, Object>) JSON.deserializeUntyped(response.getBody());
+        if(res.getStatusCode() == 200){
+            Map<String, Object> jsonResponse = (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
             System.debug((List<Object>) jsonResponse.get('records'));
             return (List<Object>) jsonResponse.get('records');
         } else {
-            System.debug(response);
+            System.debug(res);
             return null;
         }
     }
